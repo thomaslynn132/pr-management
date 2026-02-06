@@ -81,13 +81,13 @@ async function main() {
 
   // Build PR comment
   let comment = "## Automated PR Review\n\n";
-  comment += lint.code === 0 ? "✅ Lint passed\n" : "❌ Lint failed\n";
-  comment += test.code === 0 ? "✅ Tests passed\n" : "❌ Tests failed\n";
+  comment += lint.code === 0 ? "Lint passed\n" : "Lint failed\n";
+  comment += test.code === 0 ? "Tests passed\n" : "Tests failed\n";
 
   if (coveragePct === 0) {
-    comment += "⚠️ No source files instrumented — coverage is 0%\n";
+    comment += "No source files instrumented — coverage is 0%\n";
   } else {
-    comment += `📊 Coverage: ${coveragePct}%\n`;
+    comment += `Coverage: ${coveragePct}%\n`;
   }
 
   // Post comment
@@ -129,7 +129,7 @@ async function main() {
       });
 
       if (merge.status === 200) {
-        console.log(`✅ PR #${prNumber} merged successfully!`);
+        console.log(`PR #${prNumber} merged successfully!`);
 
         const branch = payload.pull_request?.head?.ref;
         const defaultBranch = payload.repository?.default_branch || "master";
@@ -143,7 +143,7 @@ async function main() {
         }
       }
     } catch (err) {
-      console.error("❌ Failed to auto-merge PR:", err.message);
+      console.error("Failed to auto-merge PR:", err.message);
     }
   }
 }
