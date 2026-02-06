@@ -1,0 +1,8 @@
+{
+  "ignore": [
+    "coverage/**",
+    "temp_event.json",
+    ".eslintcache",
+    "node_modules/**"
+  ]
+}

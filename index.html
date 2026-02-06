@@ -59,7 +59,7 @@
         border-left-color: #ffc107;
         background-color: #fff3cd;
       }
-      
+
       /* Additional UX improvements */
       label {
         display: block;
@@ -68,31 +68,33 @@
         font-weight: bold;
         color: #333;
       }
-      
+
       input:focus {
         outline: none;
         box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
       }
-      
+
       .loading {
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 3px solid rgba(255,255,255,.3);
+        border: 3px solid rgba(255, 255, 255, 0.3);
         border-radius: 50%;
         border-top-color: #fff;
         animation: spin 1s ease-in-out infinite;
       }
-      
+
       @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
-      
+
       .btn-loading {
         position: relative;
         pointer-events: none;
       }
-      
+
       .btn-loading::after {
         content: "";
         position: absolute;
@@ -102,12 +104,12 @@
         left: 50%;
         margin-top: -10px;
         margin-left: -10px;
-        border: 3px solid rgba(255,255,255,.3);
+        border: 3px solid rgba(255, 255, 255, 0.3);
         border-radius: 50%;
         border-top-color: #fff;
         animation: spin 1s ease-in-out infinite;
       }
-      
+
       .form-help {
         display: block;
         margin-top: 5px;
@@ -125,7 +127,12 @@
 
     <form id="input-form" novalidate>
       <label for="pr-title">PR Title:</label>
-      <input type="text" id="pr-title" name="pr-title" placeholder="Enter PR title" aria-describedby="pr-title-help" />
+      <input
+        type="text"
+        id="pr-title"
+        name="pr-title"
+        placeholder="Enter PR title"
+        aria-describedby="pr-title-help" />
 
       <label for="pr-description">PR Description:</label>
       <input
@@ -144,15 +151,6 @@
         required
         aria-describedby="github-token-help" />
 
-      <label for="github-user-name">GitHub Username:</label>
-      <input
-        type="text"
-        id="github-user-name"
-        name="github-user-name"
-        placeholder="Enter GitHub username"
-        required
-        aria-describedby="github-user-name-help" />
-
       <label for="repositories">Repositories (comma separated):</label>
       <input
         type="text"
@@ -161,7 +159,10 @@
         placeholder="Enter repositories (e.g., owner/repo or https://github.com/owner/repo)"
         required
         aria-describedby="repositories-help" />
-      <small id="repositories-help" class="form-help">Example: thomaslynn132/setup or https://github.com/thomaslynn132/setup</small>
+      <small id="repositories-help" class="form-help"
+        >Example: thomaslynn132/setup or
+        https://github.com/thomaslynn132/setup</small
+      >
 
       <label for="base-branch">Base Branch:</label>
       <input
@@ -190,7 +191,9 @@
         value="80"
         aria-describedby="coverage-threshold-help" />
 
-      <button id="generate-event" type="button">Generate Event & Create PR</button>
+      <button id="generate-event" type="button">
+        Generate Event & Create PR
+      </button>
       <button id="check-prs" type="button" style="background-color: #6c757d">
         Check Existing PRs
       </button>
@@ -207,12 +210,12 @@
         const checkPrsButton = document.getElementById("check-prs");
         const resultContent = document.getElementById("result-content");
         const form = document.getElementById("input-form");
-        
+
         // Setup real-time validation
         setupRealTimeValidation();
 
         function sanitizeHTML(str) {
-          const div = document.createElement('div');
+          const div = document.createElement("div");
           div.textContent = str;
           return div.innerHTML;
         }
@@ -318,81 +321,87 @@
         function validateForm() {
           let isValid = true;
           const requiredFields = [
-            { id: 'github-token', name: 'GitHub Token' },
-            { id: 'github-user-name', name: 'GitHub Username' },
-            { id: 'repositories', name: 'Repositories' }
+            { id: "github-token", name: "GitHub Token" },
+            { id: "repositories", name: "Repositories" },
           ];
-          
+
           // Reset borders
-          requiredFields.forEach(fieldInfo => {
+          requiredFields.forEach((fieldInfo) => {
             const field = document.getElementById(fieldInfo.id);
-            field.style.borderColor = '#ddd';
+            field.style.borderColor = "#ddd";
           });
-          
+
           // Validate required fields
-          requiredFields.forEach(fieldInfo => {
+          requiredFields.forEach((fieldInfo) => {
             const field = document.getElementById(fieldInfo.id);
             if (!field.value.trim()) {
-              field.style.borderColor = '#dc3545';
+              field.style.borderColor = "#dc3545";
               isValid = false;
             }
           });
 
           // Validate coverage threshold
-          const coverageField = document.getElementById('coverage-threshold');
+          const coverageField = document.getElementById("coverage-threshold");
           const coverageValue = parseInt(coverageField.value);
-          if (isNaN(coverageValue) || coverageValue < 0 || coverageValue > 100) {
-            coverageField.style.borderColor = '#dc3545';
+          if (
+            isNaN(coverageValue) ||
+            coverageValue < 0 ||
+            coverageValue > 100
+          ) {
+            coverageField.style.borderColor = "#dc3545";
             isValid = false;
           } else {
-            coverageField.style.borderColor = '#ddd';
+            coverageField.style.borderColor = "#ddd";
           }
 
           return isValid;
         }
-        
+
         // Add real-time validation feedback
         function setupRealTimeValidation() {
-          const requiredFields = ['github-token', 'github-user-name', 'repositories', 'coverage-threshold'];
-          
-          requiredFields.forEach(fieldId => {
+          const requiredFields = [
+            "github-token",
+            "repositories",
+            "coverage-threshold",
+          ];
+
+          requiredFields.forEach((fieldId) => {
             const field = document.getElementById(fieldId);
-            
-            field.addEventListener('blur', function() {
+
+            field.addEventListener("blur", function () {
               validateField(fieldId);
             });
-            
-            field.addEventListener('input', function() {
+
+            field.addEventListener("input", function () {
               // Clear error styling on input
-              if (this.style.borderColor === 'rgb(220, 53, 69)') {
-                this.style.borderColor = '#ddd';
+              if (this.style.borderColor === "rgb(220, 53, 69)") {
+                this.style.borderColor = "#ddd";
               }
             });
           });
         }
-        
+
         function validateField(fieldId) {
           const field = document.getElementById(fieldId);
           const value = field.value.trim();
-          
-          switch(fieldId) {
-            case 'github-token':
-            case 'github-user-name':
-            case 'repositories':
+
+          switch (fieldId) {
+            case "github-token":
+            case "repositories":
               if (!value) {
-                field.style.borderColor = '#dc3545';
+                field.style.borderColor = "#dc3545";
                 return false;
               } else {
-                field.style.borderColor = '#28a745';
+                field.style.borderColor = "#28a745";
                 return true;
               }
-            case 'coverage-threshold':
+            case "coverage-threshold":
               const numValue = parseInt(value);
               if (isNaN(numValue) || numValue < 0 || numValue > 100) {
-                field.style.borderColor = '#dc3545';
+                field.style.borderColor = "#dc3545";
                 return false;
               } else {
-                field.style.borderColor = '#28a745';
+                field.style.borderColor = "#28a745";
                 return true;
               }
             default:
@@ -412,7 +421,7 @@
           }
 
           // Show loading state on button
-          generateButton.classList.add('btn-loading');
+          generateButton.classList.add("btn-loading");
           generateButton.disabled = true;
 
           const prTitle =
@@ -421,7 +430,6 @@
             document.getElementById("pr-description").value ||
             "Created by PR Management System";
           const githubToken = document.getElementById("github-token").value;
-          const userName = document.getElementById("github-user-name").value;
           const repositories = document.getElementById("repositories").value;
 
           const baseBranch =
@@ -445,7 +453,6 @@
                 title: prTitle,
                 description: prDescription,
                 token: githubToken,
-                userName: userName,
                 repositories: repositories,
                 baseBranch: baseBranch,
                 headBranch: headBranch,
@@ -463,7 +470,7 @@
             });
           } finally {
             // Remove loading state
-            generateButton.classList.remove('btn-loading');
+            generateButton.classList.remove("btn-loading");
             generateButton.disabled = false;
           }
         });
@@ -480,11 +487,10 @@
           }
 
           // Show loading state on button
-          checkPrsButton.classList.add('btn-loading');
+          checkPrsButton.classList.add("btn-loading");
           checkPrsButton.disabled = true;
 
           const githubToken = document.getElementById("github-token").value;
-          const userName = document.getElementById("github-user-name").value;
           const repositories = document.getElementById("repositories").value;
 
           if (!repositories) {
@@ -495,7 +501,7 @@
               </div>
             `;
             // Remove loading state
-            checkPrsButton.classList.remove('btn-loading');
+            checkPrsButton.classList.remove("btn-loading");
             checkPrsButton.disabled = false;
             return;
           }
@@ -515,7 +521,6 @@
               },
               body: JSON.stringify({
                 token: githubToken,
-                userName: userName,
                 repository: firstRepo,
               }),
             });
@@ -530,7 +535,7 @@
             });
           } finally {
             // Remove loading state
-            checkPrsButton.classList.remove('btn-loading');
+            checkPrsButton.classList.remove("btn-loading");
             checkPrsButton.disabled = false;
           }
         });
