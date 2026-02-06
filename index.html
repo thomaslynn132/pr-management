@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pr Management</title>
+  </head>
+  <body>
+    <h1>Pr Management</h1>
+    <p>
+      Welcome to the Pr Management system. Here you can manage your pull
+      requests efficiently.
+    </p>
+    <input type="text" id="pr-title" placeholder="Enter PR title" />
+    <input type="text" id="pr-description" placeholder="Enter PR description" />
+    <input type="text" id="github-token" placeholder="Enter GitHub token" />
+    <input
+      type="text"
+      id="github-user-name"
+      placeholder="Enter github user name" />
+    <input
+      type="text"
+      id="repositories"
+      placeholder="Enter repositories (comma separated)" />
+    <input type="text" id="base-branch" placeholder="Enter base branch" />
+    <input type="text" id="head-branch" placeholder="Enter head branch" />
+    <input
+      type="text"
+      id="coverage-threshold"
+      placeholder="Enter coverage threshold" />
+    <button id="generate-event">Generate Event</button>
+    <section id="pr-check-result">
+      <h2>PR Check Result</h2>
+    </section>
+    <script src="./scripts/generate-event.js"></script>
+    <script src="./scripts/pr-check.js"></script>
+    <script src="./index.js"></script>
+  </body>
+</html>

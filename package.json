@@ -6,9 +6,11 @@
   "scripts": {
     "lint": "eslint . --ext .js,.mjs,.cjs",
     "test": "jest --runInBand",
+    "start": "node index.js",
     "test:coverage": "jest --coverage --coverageReporters=json-summary",
     "generate-event": "node ./scripts/generate-event.js",
-    "pr-check": "npm run generate-event && node ./scripts/pr-check.js"
+    "pr-check": "npm run generate-event && node ./scripts/pr-check.js",
+    "dev": "node index.js"
   },
   "keywords": [
     "github",
@@ -34,6 +36,8 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
-    "dotenv": "^17.2.2"
+    "dotenv": "^17.2.2",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   }
 }
