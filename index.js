@@ -27,14 +27,11 @@ app.use(expressStatic(join(__dirname, "."))); // Serve static files from current
 // Sanitize inputs to prevent command injection
 function sanitizeInput(input) {
   if (typeof input !== "string") return "";
-  // Remove potentially dangerous characters
   return input;
 }
 
-// Helper function to run commands safely
 function runCmd(cmd) {
   return new Promise((resolve) => {
-    // Additional safety check - ensure cmd doesn't contain dangerous characters
     if (/[;&|`$(){}[\]\\<>]/.test(cmd)) {
       resolve({
         code: 1,
@@ -56,11 +53,9 @@ function runCmd(cmd) {
   });
 }
 
-// Wait for file helper
 async function waitForFile(filePath, timeout = 5000) {
   const start = Date.now();
 
-  // Security check: ensure filePath is within expected directory
   const normalizedPath = join(process.cwd(), filePath);
   if (!normalizedPath.startsWith(process.cwd())) {
     throw new Error("Invalid file path");
@@ -94,9 +89,6 @@ app.post("/api/generate-event", async (req, res) => {
       });
     }
 
-    // ---------------------------
-    // Sanitize
-    // ---------------------------
     const sanitizedTitle = sanitizeInput(title || "Automated PR");
     const sanitizedDescription = sanitizeInput(
       description || "Created by PR Management System",
@@ -191,7 +183,6 @@ app.post("/api/generate-event", async (req, res) => {
       const [owner, repoName] = repo.split("/");
 
       try {
-        // 1️⃣ Ensure branches exist
         await octokit.rest.repos.getBranch({
           owner,
           repo: repoName,
@@ -204,7 +195,6 @@ app.post("/api/generate-event", async (req, res) => {
           branch: sanitizedHeadBranch,
         });
 
-        // 2️⃣ Look for existing PR
         const existingPRs = await octokit.rest.pulls.list({
           owner,
           repo: repoName,
