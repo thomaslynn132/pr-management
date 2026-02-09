@@ -120,10 +120,6 @@ app.post("/api/generate-event", async (req, res) => {
         message: "Coverage threshold must be between 0 and 100",
       });
     }
-
-    // ---------------------------
-    // Parse repositories
-    // ---------------------------
     const reposArray = sanitizedRepos
       .split(",")
       .map((repo) => repo.trim())
@@ -144,10 +140,6 @@ app.post("/api/generate-event", async (req, res) => {
         });
       }
     }
-
-    // ---------------------------
-    // Mock PR event (local tooling)
-    // ---------------------------
     const mockEvent = {
       pull_request: {
         number: Math.floor(Math.random() * 1000) + 1,
@@ -160,16 +152,8 @@ app.post("/api/generate-event", async (req, res) => {
 
     eventFilePath = join(process.cwd(), "temp_event.json");
     writeFileSync(eventFilePath, JSON.stringify(mockEvent, null, 2));
-
-    // ---------------------------
-    // Run lint & tests
-    // ---------------------------
     const lintResult = await runCmd("npm run lint");
     const testResult = await runCmd("npm test -- --coverage");
-
-    // ---------------------------
-    // Read coverage
-    // ---------------------------
     let coveragePct = 0;
     const covPath = join(process.cwd(), "coverage", "coverage-summary.json");
 
@@ -189,9 +173,6 @@ app.post("/api/generate-event", async (req, res) => {
       testResult.code === 0 &&
       coveragePct >= sanitizedCoverageThreshold;
 
-    // ---------------------------
-    // GitHub PR logic
-    // ---------------------------
     const octokit = new Octokit({ auth: token });
 
     const result = {
