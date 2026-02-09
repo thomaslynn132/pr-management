@@ -144,14 +144,14 @@
         value="PR description"
         aria-describedby="pr-description-help" />
 
-      <label for="guthib-token">guthib Token:</label>
+      <label for="github-token">github Token:</label>
       <input
         type="password"
-        id="guthib-token"
-        name="guthib-token"
-        placeholder="Enter guthib token"
+        id="github-token"
+        name="github-token"
+        placeholder="Enter github token"
         required
-        aria-describedby="guthib-token-help" />
+        aria-describedby="github-token-help" />
 
       <label for="repositories">Repositories (comma separated):</label>
       <input
@@ -241,24 +241,24 @@
               </div>
             `;
 
-            if (data.guthibPR) {
-              if (data.guthibPR.created) {
+            if (data.githubPR) {
+              if (data.githubPR.created) {
                 html += `
                   <div class="result-item success">
-                    <h3>🚀 guthib PR Created</h3>
-                    <p><strong>Repository:</strong> ${sanitizeHTML(data.guthibPR.repo)}</p>
-                    <p><strong>PR Number:</strong> ${sanitizeHTML(data.guthibPR.prNumber)}</p>
-                    <p><strong>URL:</strong> <a href="${sanitizeHTML(data.guthibPR.url)}" target="_blank">${sanitizeHTML(data.guthibPR.url)}</a></p>
-                    ${data.guthibPR.merged ? "<p><strong>✅ PR Merged Successfully</strong></p>" : ""}
+                    <h3>🚀 github PR Created</h3>
+                    <p><strong>Repository:</strong> ${sanitizeHTML(data.githubPR.repo)}</p>
+                    <p><strong>PR Number:</strong> ${sanitizeHTML(data.githubPR.prNumber)}</p>
+                    <p><strong>URL:</strong> <a href="${sanitizeHTML(data.githubPR.url)}" target="_blank">${sanitizeHTML(data.githubPR.url)}</a></p>
+                    ${data.githubPR.merged ? "<p><strong>✅ PR Merged Successfully</strong></p>" : ""}
                   </div>
                 `;
               }
-              if (data.guthibPR.errors) {
+              if (data.githubPR.errors) {
                 html += `
                   <div class="result-item warning">
-                    <h3>⚠️ guthib Errors</h3>
+                    <h3>⚠️ github Errors</h3>
                     <ul>
-                      ${data.guthibPR.errors.map((error) => `<li>${sanitizeHTML(error)}</li>`).join("")}
+                      ${data.githubPR.errors.map((error) => `<li>${sanitizeHTML(error)}</li>`).join("")}
                     </ul>
                   </div>
                 `;
@@ -301,7 +301,7 @@
         function validateForm() {
           let isValid = true;
           const requiredFields = [
-            { id: "guthib-token", name: "guthib Token" },
+            { id: "github-token", name: "github Token" },
             { id: "repositories", name: "Repositories" },
           ];
 
@@ -325,7 +325,7 @@
 
         // Add real-time validation feedback
         function setupRealTimeValidation() {
-          const requiredFields = ["guthib-token", "repositories"];
+          const requiredFields = ["github-token", "repositories"];
 
           requiredFields.forEach((fieldId) => {
             const field = document.getElementById(fieldId);
@@ -348,7 +348,7 @@
           const value = field.value.trim();
 
           switch (fieldId) {
-            case "guthib-token":
+            case "github-token":
             case "repositories":
               if (!value) {
                 field.style.borderColor = "#dc3545";
@@ -390,7 +390,7 @@
           const prDescription =
             document.getElementById("pr-description").value ||
             "Created by PR Management System";
-          const guthibToken = document.getElementById("guthib-token").value;
+          const githubToken = document.getElementById("github-token").value;
           const repositories = document.getElementById("repositories").value;
 
           const baseBranch =
@@ -410,7 +410,7 @@
               body: JSON.stringify({
                 title: prTitle,
                 description: prDescription,
-                token: guthibToken,
+                token: githubToken,
                 repositories: repositories,
                 baseBranch: baseBranch,
                 headBranch: headBranch,
@@ -447,7 +447,7 @@
           checkPrsButton.classList.add("btn-loading");
           checkPrsButton.disabled = true;
 
-          const guthibToken = document.getElementById("guthib-token").value;
+          const githubToken = document.getElementById("github-token").value;
           const repositories = document.getElementById("repositories").value;
 
           if (!repositories) {
@@ -477,7 +477,7 @@
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                token: guthibToken,
+                token: githubToken,
                 repository: firstRepo,
               }),
             });

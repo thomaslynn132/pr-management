@@ -50,7 +50,7 @@ async function waitForMergeable(
     await new Promise((r) => setTimeout(r, delay));
   }
 
-  throw new Error("Timed out waiting for guthib to compute mergeability");
+  throw new Error("Timed out waiting for github to compute mergeability");
 }
 
 app.post("/api/generate-event", async (req, res) => {
@@ -69,7 +69,7 @@ app.post("/api/generate-event", async (req, res) => {
     if (!token || !repositories) {
       return res.status(400).json({
         success: false,
-        message: "guthib token and repositories are required",
+        message: "github token and repositories are required",
       });
     }
 
@@ -125,10 +125,10 @@ app.post("/api/generate-event", async (req, res) => {
 
     const result = {
       success: true,
-      guthibPR: { results: [] },
+      githubPR: { results: [] },
     };
 
-    const guthibResults = [];
+    const githubResults = [];
 
     for (const repo of reposArray) {
       const [owner, repoName] = repo.split("/");
@@ -199,7 +199,7 @@ app.post("/api/generate-event", async (req, res) => {
           mergeError = err.message;
         }
 
-        guthibResults.push({
+        githubResults.push({
           repo,
           prNumber: pr.number,
           url: pr.html_url,
@@ -208,14 +208,14 @@ app.post("/api/generate-event", async (req, res) => {
           mergeError,
         });
       } catch (err) {
-        guthibResults.push({
+        githubResults.push({
           repo,
           error: err.response?.data?.message || err.message,
         });
       }
     }
 
-    result.guthibPR = { results: guthibResults };
+    result.githubPR = { results: githubResults };
 
     res.json(result);
   } catch (error) {
@@ -243,7 +243,7 @@ app.post("/api/check-pr", async (req, res) => {
     if (!token || !repository) {
       return res.status(400).json({
         success: false,
-        message: "guthib token, and repository are required",
+        message: "github token, and repository are required",
       });
     }
 
