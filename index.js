@@ -1,7 +1,7 @@
 import express, { json, static as expressStatic } from "express";
 import cors from "cors";
-import { exec } from "child_process";
-import { existsSync, writeFileSync, readFileSync, unlinkSync } from "fs";
+// import { exec } from "child_process";
+import { existsSync, writeFileSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { Octokit } from "@octokit/rest";
 import { fileURLToPath } from "url";
@@ -17,55 +17,40 @@ const __dirname = dirname(__filename);
 // Middleware
 app.use(
   cors({
-    origin: process.env.NODE_ENV === "production" ? false : "*", // Restrict in production
+    origin: process.env.NODE_ENV === "production" ? false : "*",
     credentials: true,
   }),
 );
 app.use(json({ limit: "10mb" }));
-app.use(expressStatic(join(__dirname, "."))); // Serve static files from current directory safely
-
-// Sanitize inputs to prevent command injection
+app.use(expressStatic(join(__dirname, ".")));
 function sanitizeInput(input) {
   if (typeof input !== "string") return "";
   return input;
 }
 
-function runCmd(cmd) {
-  return new Promise((resolve) => {
-    if (/[;&|`$(){}[\]\\<>]/.test(cmd)) {
-      resolve({
-        code: 1,
-        stdout: "",
-        stderr: "Command contains invalid characters",
-        success: false,
-      });
-      return;
+async function waitForMergeable(
+  octokit,
+  owner,
+  repo,
+  pull_number,
+  retries = 10,
+  delay = 1500,
+) {
+  for (let i = 0; i < retries; i++) {
+    const { data: pr } = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number,
+    });
+
+    if (pr.mergeable !== null) {
+      return pr;
     }
 
-    exec(cmd, { maxBuffer: 1024 * 1024 * 20 }, (err, stdout, stderr) => {
-      resolve({
-        code: err ? (err.code ?? 1) : 0,
-        stdout,
-        stderr,
-        success: !err,
-      });
-    });
-  });
-}
-
-async function waitForFile(filePath, timeout = 5000) {
-  const start = Date.now();
-
-  const normalizedPath = join(process.cwd(), filePath);
-  if (!normalizedPath.startsWith(process.cwd())) {
-    throw new Error("Invalid file path");
+    await new Promise((r) => setTimeout(r, delay));
   }
 
-  while (!existsSync(normalizedPath)) {
-    if (Date.now() - start > timeout) return false;
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  return true;
+  throw new Error("Timed out waiting for guthib to compute mergeability");
 }
 
 app.post("/api/generate-event", async (req, res) => {
@@ -78,14 +63,13 @@ app.post("/api/generate-event", async (req, res) => {
       token,
       repositories,
       baseBranch = "main",
-      headBranch = "feature-branch",
-      coverageThreshold = 80,
+      headBranch = "thomas",
     } = req.body;
 
     if (!token || !repositories) {
       return res.status(400).json({
         success: false,
-        message: "GitHub token and repositories are required",
+        message: "guthib token and repositories are required",
       });
     }
 
@@ -96,8 +80,6 @@ app.post("/api/generate-event", async (req, res) => {
     const sanitizedRepos = sanitizeInput(repositories);
     const sanitizedBaseBranch = sanitizeInput(baseBranch);
     const sanitizedHeadBranch = sanitizeInput(headBranch);
-    const sanitizedCoverageThreshold =
-      Number.parseInt(coverageThreshold, 10) || 80;
 
     if (sanitizedBaseBranch === sanitizedHeadBranch) {
       return res.status(400).json({
@@ -106,12 +88,6 @@ app.post("/api/generate-event", async (req, res) => {
       });
     }
 
-    if (sanitizedCoverageThreshold < 0 || sanitizedCoverageThreshold > 100) {
-      return res.status(400).json({
-        success: false,
-        message: "Coverage threshold must be between 0 and 100",
-      });
-    }
     const reposArray = sanitizedRepos
       .split(",")
       .map((repo) => repo.trim())
@@ -144,40 +120,15 @@ app.post("/api/generate-event", async (req, res) => {
 
     eventFilePath = join(process.cwd(), "temp_event.json");
     writeFileSync(eventFilePath, JSON.stringify(mockEvent, null, 2));
-    const lintResult = await runCmd("npm run lint");
-    const testResult = await runCmd("npm test -- --coverage");
-    let coveragePct = 0;
-    const covPath = join(process.cwd(), "coverage", "coverage-summary.json");
-
-    if (await waitForFile(covPath, 10000)) {
-      try {
-        const cov = JSON.parse(readFileSync(covPath, "utf8"));
-        coveragePct = Number(
-          cov.total?.lines?.pct ?? cov.total?.statements?.pct ?? 0,
-        );
-      } catch (err) {
-        console.error("Coverage parse failed:", err);
-      }
-    }
-
-    const checksPassed =
-      lintResult.code === 0 &&
-      testResult.code === 0 &&
-      coveragePct >= sanitizedCoverageThreshold;
 
     const octokit = new Octokit({ auth: token });
 
     const result = {
       success: true,
-      lint: { passed: lintResult.code === 0 },
-      test: { passed: testResult.code === 0 },
-      coverage: {
-        percentage: coveragePct,
-        passed: coveragePct >= sanitizedCoverageThreshold,
-        threshold: sanitizedCoverageThreshold,
-      },
-      githubPR: { results: [] },
+      guthibPR: { results: [] },
     };
+
+    const guthibResults = [];
 
     for (const repo of reposArray) {
       const [owner, repoName] = repo.split("/");
@@ -194,21 +145,21 @@ app.post("/api/generate-event", async (req, res) => {
           repo: repoName,
           branch: sanitizedHeadBranch,
         });
-
-        const existingPRs = await octokit.rest.pulls.list({
+        const { data: prs } = await octokit.rest.pulls.list({
           owner,
           repo: repoName,
           state: "open",
-          head: sanitizedHeadBranch,
           base: sanitizedBaseBranch,
+          head: `${owner}:${sanitizedHeadBranch}`,
         });
 
         let pr;
         let created = false;
-        if (existingPRs.data.length > 0) {
-          pr = existingPRs.data[0];
+
+        if (prs.length > 0) {
+          pr = prs[0];
         } else {
-          const createdPR = await octokit.rest.pulls.create({
+          const { data } = await octokit.rest.pulls.create({
             owner,
             repo: repoName,
             title: sanitizedTitle,
@@ -216,16 +167,24 @@ app.post("/api/generate-event", async (req, res) => {
             head: sanitizedHeadBranch,
             base: sanitizedBaseBranch,
           });
-
-          pr = createdPR.data;
+          pr = data;
           created = true;
         }
         let merged = false;
-        let mergeError;
+        let mergeError = null;
 
-        if (checksPassed) {
-          try {
-            console.log("exi pr", existingPRs);
+        try {
+          const mergeablePR = await waitForMergeable(
+            octokit,
+            owner,
+            repoName,
+            pr.number,
+          );
+
+          if (
+            mergeablePR.mergeable &&
+            mergeablePR.mergeable_state === "clean"
+          ) {
             await octokit.rest.pulls.merge({
               owner,
               repo: repoName,
@@ -233,12 +192,14 @@ app.post("/api/generate-event", async (req, res) => {
               merge_method: "merge",
             });
             merged = true;
-          } catch (err) {
-            mergeError = err.response?.data?.message || err.message;
-            console.log("exiprs", mergeError);
+          } else {
+            mergeError = `Not mergeable: ${mergeablePR.mergeable_state}`;
           }
+        } catch (err) {
+          mergeError = err.message;
         }
-        result.githubPR.results.push({
+
+        guthibResults.push({
           repo,
           prNumber: pr.number,
           url: pr.html_url,
@@ -247,13 +208,14 @@ app.post("/api/generate-event", async (req, res) => {
           mergeError,
         });
       } catch (err) {
-        result.githubPR.results.push({
+        guthibResults.push({
           repo,
-          created: false,
           error: err.response?.data?.message || err.message,
         });
       }
     }
+
+    result.guthibPR = { results: guthibResults };
 
     res.json(result);
   } catch (error) {
@@ -274,7 +236,6 @@ app.post("/api/generate-event", async (req, res) => {
   }
 });
 
-// API endpoint to check PR status
 app.post("/api/check-pr", async (req, res) => {
   try {
     const { token, repository } = req.body;
@@ -282,7 +243,7 @@ app.post("/api/check-pr", async (req, res) => {
     if (!token || !repository) {
       return res.status(400).json({
         success: false,
-        message: "GitHub token, and repository are required",
+        message: "guthib token, and repository are required",
       });
     }
 
