@@ -155,20 +155,31 @@ app.post("/api/generate-event", async (req, res) => {
 
         let pr;
         let created = false;
+        console.log(prs, "Pull Request List");
 
         if (prs.length > 0) {
           pr = prs[0];
         } else {
-          const { data } = await octokit.rest.pulls.create({
-            owner,
-            repo: repoName,
-            title: sanitizedTitle,
-            body: sanitizedDescription,
-            head: sanitizedHeadBranch,
-            base: sanitizedBaseBranch,
-          });
-          pr = data;
-          created = true;
+          try {
+            const { data: newPR } = await octokit.rest.pulls.create({
+              owner,
+              repo: repoName,
+              title: sanitizedTitle,
+              body: sanitizedDescription,
+              head: sanitizedHeadBranch,
+              base: sanitizedBaseBranch,
+            });
+            pr = newPR;
+            created = true;
+          } catch (err) {
+            console.log(err, "PR Create Error");
+
+            githubResults.push({
+              repo,
+              error: `Failed to create PR: ${err.response?.data?.message || err.message}`,
+            });
+            continue;
+          }
         }
         let merged = false;
         let mergeError = null;
@@ -196,6 +207,8 @@ app.post("/api/generate-event", async (req, res) => {
             mergeError = `Not mergeable: ${mergeablePR.mergeable_state}`;
           }
         } catch (err) {
+          console.log(err, "Merge Error");
+
           mergeError = err.message;
         }
 
