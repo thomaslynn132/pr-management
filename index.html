@@ -4,7 +4,209 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PR Management</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #111827;
+        --muted: #94a3b8;
+        --text: #e5e7eb;
+        --primary: #3b82f6;
+        --success: #22c55e;
+        --error: #ef4444;
+        --warning: #f59e0b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        background: radial-gradient(circle at top, #1e293b, var(--bg));
+        color: var(--text);
+      }
+
+      .app {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        animation: fadeIn 0.8s ease;
+      }
+
+      /* Header */
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        font-size: 2.2rem;
+      }
+
+      .header p {
+        color: var(--muted);
+      }
+
+      /* Card */
+      .card {
+        background: linear-gradient(180deg, #111827, #020617);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        animation: slideUp 0.6s ease;
+      }
+
+      /* Form */
+      .field {
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: block;
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 14px;
+        background: #020617;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        color: var(--text);
+        transition: all 0.25s ease;
+      }
+
+      input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        outline: none;
+        transform: translateY(-1px);
+      }
+
+      small {
+        color: var(--muted);
+        font-size: 0.75rem;
+      }
+
+      /* Layout helpers */
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      /* Buttons */
+      button {
+        flex: 1;
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        position: relative;
+      }
+
+      .primary {
+        background: linear-gradient(135deg, var(--primary), #2563eb);
+        color: white;
+      }
+
+      .secondary {
+        background: #1e293b;
+        color: var(--text);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+      }
+
+      button:active {
+        transform: scale(0.97);
+      }
+
+      /* Loading animation */
+      .btn-loading {
+        pointer-events: none;
+        opacity: 0.8;
+      }
+
+      .btn-loading::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        width: 22px;
+        height: 22px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      /* Results */
+      .results {
+        margin-top: 30px;
+        animation: fadeIn 0.6s ease;
+      }
+
+      .result-item {
+        background: #020617;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        animation: slideUp 0.4s ease;
+      }
+
+      .result-item.success {
+        border-left: 4px solid var(--success);
+      }
+
+      .result-item.error {
+        border-left: 4px solid var(--error);
+      }
+
+      .result-item.warning {
+        border-left: 4px solid var(--warning);
+      }
+
+      /* Animations */
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(12px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="app">
@@ -71,7 +273,181 @@
         <div id="result-content"></div>
       </section>
     </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        function setResult(html) {
+          resultContent.style.opacity = "0";
+          setTimeout(() => {
+            resultContent.innerHTML = html;
+            resultContent.style.opacity = "1";
+          }, 120);
+        }
 
-    <script src="/script.js"></script>
+        function renderGenerateResult(data) {
+          if (!data.success) {
+            return setResult(`
+      <div class="result-item error">
+        <h3>❌ Error</h3>
+        <p>${sanitizeHTML(data.message || "Something went wrong")}</p>
+      </div>
+    `);
+          }
+
+          const results = data.githubPR?.results || [];
+
+          if (!results.length) {
+            return setResult(`
+      <div class="result-item warning">
+        <p>No PR actions were performed.</p>
+      </div>
+    `);
+          }
+
+          let html = "";
+
+          results.forEach((item) => {
+            if (item.error) {
+              html += `
+        <div class="result-item error">
+          <h3>❌ ${sanitizeHTML(item.repo)}</h3>
+          <p>${sanitizeHTML(item.error)}</p>
+        </div>
+      `;
+            } else {
+              html += `
+        <div class="result-item success">
+          <h3>✅ ${sanitizeHTML(item.repo)}</h3>
+          <p>PR processed successfully</p>
+          ${
+            item.url
+              ? `<a href="${sanitizeHTML(item.url)}" target="_blank">View PR →</a>`
+              : ""
+          }
+        </div>
+      `;
+            }
+          });
+
+          setResult(html);
+        }
+
+        const generateButton = document.getElementById("generate-event");
+        const checkPrsButton = document.getElementById("check-prs");
+        const resultContent = document.getElementById("result-content");
+
+        setupRealTimeValidation();
+
+        function sanitizeHTML(str) {
+          const div = document.createElement("div");
+          div.textContent = str;
+          return div.innerHTML;
+        }
+
+        function validateForm() {
+          let valid = true;
+          ["github-token", "repositories"].forEach((id) => {
+            const field = document.getElementById(id);
+            field.style.borderColor = "#ddd";
+            if (!field.value.trim()) {
+              field.style.borderColor = "#dc3545";
+              valid = false;
+            }
+          });
+          return valid;
+        }
+
+        function setupRealTimeValidation() {
+          ["github-token", "repositories"].forEach((id) => {
+            const field = document.getElementById(id);
+            field.addEventListener("input", () => {
+              field.style.borderColor = "#ddd";
+            });
+          });
+        }
+
+        function displayError(message, error) {
+          resultContent.innerHTML = `
+      <div class="result-item error">
+        <h3>❌ Error</h3>
+        <p>${sanitizeHTML(message)}</p>
+        ${error ? `<pre>${sanitizeHTML(error)}</pre>` : ""}
+      </div>
+    `;
+        }
+
+        generateButton.addEventListener("click", async () => {
+          if (!validateForm()) {
+            displayError("Please fill in all required fields.");
+            return;
+          }
+
+          generateButton.classList.add("btn-loading");
+          generateButton.disabled = true;
+
+          try {
+            const response = await fetch("/api/generate-event", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title:
+                  document.getElementById("pr-title").value || "Automated PR",
+                description:
+                  document.getElementById("pr-description").value ||
+                  "Created by PR Management System",
+                token: document.getElementById("github-token").value,
+                repositories: document.getElementById("repositories").value,
+                baseBranch:
+                  document.getElementById("base-branch").value || "main",
+                headBranch:
+                  document.getElementById("head-branch").value ||
+                  "feature-branch",
+              }),
+            });
+
+            const data = await response.json();
+            renderGenerateResult(data);
+          } catch (err) {
+            displayError("Failed to connect to server", err.message);
+          } finally {
+            generateButton.classList.remove("btn-loading");
+            generateButton.disabled = false;
+          }
+        });
+
+        checkPrsButton.addEventListener("click", async () => {
+          if (!validateForm()) {
+            displayError("Please fill in all required fields.");
+            return;
+          }
+
+          checkPrsButton.classList.add("btn-loading");
+          checkPrsButton.disabled = true;
+
+          try {
+            const repo = document
+              .getElementById("repositories")
+              .value.split(",")[0]
+              .trim();
+
+            const response = await fetch("/api/check-pr", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                token: document.getElementById("github-token").value,
+                repository: repo,
+              }),
+            });
+
+            const data = await response.json();
+            renderGenerateResult(data);
+          } catch (err) {
+            displayError("Failed to connect to server", err.message);
+          } finally {
+            checkPrsButton.classList.remove("btn-loading");
+            checkPrsButton.disabled = false;
+          }
+        });
+      });
+    </script>
   </body>
 </html>
