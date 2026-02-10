@@ -260,9 +260,9 @@
               if (data.githubPR.results) {
                 html += `
                   <div class="result-item warning">
-                    <h3>⚠️ github results</h3>
+                    <h3>⚠️ Github Results</h3>
                     <ul>
-                      ${data.githubPR.results.map((result) => `<li>${sanitizeHTML(result.repo)}: ${sanitizeHTML(result.error || (result.merged ? "Merged" : "Not Merged"))}</li>`).join("")}
+                      ${data.githubPR.results.map((result) => `<li>${sanitizeHTML(result.repo)}: ${sanitizeHTML(result.error || (result.merged ? "Merged" : "Not Merged"))}<br>${sanitizeHTML(result?.url)}</li>`).join("")}
                     </ul>
                   </div>
                 `;
