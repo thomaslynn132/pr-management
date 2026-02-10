@@ -3,507 +3,75 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pr Management</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        max-width: 800px;
-        margin: 0 auto;
-      }
-      h1 {
-        color: #333;
-      }
-      input[type="text"] {
-        width: 100%;
-        padding: 10px;
-        margin: 10px 0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-sizing: border-box;
-      }
-      button {
-        background-color: #007bff;
-        color: white;
-        padding: 12px 24px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 16px;
-        margin: 10px 0;
-      }
-      button:hover {
-        background-color: #0056b3;
-      }
-      #pr-check-result {
-        margin-top: 30px;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        background-color: #f9f9f9;
-      }
-      .result-item {
-        margin: 10px 0;
-        padding: 10px;
-        border-left: 4px solid #ddd;
-      }
-      .success {
-        border-left-color: #28a745;
-        background-color: #d4edda;
-      }
-      .error {
-        border-left-color: #dc3545;
-        background-color: #f8d7da;
-      }
-      .warning {
-        border-left-color: #ffc107;
-        background-color: #fff3cd;
-      }
-
-      /* Additional UX improvements */
-      label {
-        display: block;
-        margin-top: 10px;
-        margin-bottom: 5px;
-        font-weight: bold;
-        color: #333;
-      }
-
-      input:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-      }
-
-      .loading {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s ease-in-out infinite;
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .btn-loading {
-        position: relative;
-        pointer-events: none;
-      }
-
-      .btn-loading::after {
-        content: "";
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        top: 50%;
-        left: 50%;
-        margin-top: -10px;
-        margin-left: -10px;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s ease-in-out infinite;
-      }
-
-      .form-help {
-        display: block;
-        margin-top: 5px;
-        color: #666;
-        font-size: 0.85em;
-      }
-    </style>
+    <title>PR Management</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <h1>PR Management</h1>
-    <p>
-      Welcome to the PR Management. Here you can manage(create, merge, check
-      existing) your pull requests efficiently. Please fill in the required
-      fields and click the buttons to perform actions. Data won't be stored
-      anywhere and will be used only for creating PRs and checking existing PRs.
-      Make sure to provide a valid GitHub token with appropriate permissions for
-      the repositories you want to manage.
-    </p>
+    <div class="app">
+      <header class="header">
+        <h1>🚀 PR Management</h1>
+        <p>
+          Create, merge, and inspect GitHub pull requests safely.
+          <br />
+          <span>No data is stored.</span>
+        </p>
+      </header>
 
-    <form id="input-form" novalidate>
-      <label for="pr-title">PR Title:</label>
-      <input
-        type="text"
-        id="pr-title"
-        name="pr-title"
-        placeholder="Enter PR title"
-        aria-describedby="pr-title-help" />
+      <main class="card">
+        <form id="input-form" novalidate>
+          <div class="field">
+            <label>PR Title</label>
+            <input id="pr-title" placeholder="Automated PR" />
+          </div>
 
-      <label for="pr-description">PR Description:</label>
-      <input
-        type="text"
-        id="pr-description"
-        name="pr-description"
-        placeholder="Enter PR description"
-        aria-describedby="pr-description-help" />
+          <div class="field">
+            <label>PR Description</label>
+            <input id="pr-description" placeholder="Created by PR Management" />
+          </div>
 
-      <label for="github-token">github Token:</label>
-      <input
-        type="password"
-        id="github-token"
-        name="github-token"
-        placeholder="Enter github token"
-        required
-        aria-describedby="github-token-help" />
+          <div class="field">
+            <label>GitHub Token *</label>
+            <input id="github-token" type="password" required />
+          </div>
 
-      <label for="repositories">Repositories (comma separated):</label>
-      <input
-        type="text"
-        id="repositories"
-        name="repositories"
-        placeholder="Enter repositories (owner/repo)"
-        required
-        aria-describedby="repositories-help" />
-      <small id="repositories-help" class="form-help"
-        >Example: thomaslynn132/setup
-      </small>
+          <div class="field">
+            <label>Repositories *</label>
+            <input
+              id="repositories"
+              placeholder="owner/repo, owner/repo"
+              required />
+            <small>Example: thomaslynn132/setup</small>
+          </div>
 
-      <label for="base-branch">Base Branch:</label>
-      <input
-        type="text"
-        id="base-branch"
-        name="base-branch"
-        placeholder="Enter base branch (default: main)"
-        aria-describedby="base-branch-help" />
+          <div class="grid">
+            <div class="field">
+              <label>Base Branch</label>
+              <input id="base-branch" placeholder="main" />
+            </div>
 
-      <label for="head-branch">Head Branch:</label>
-      <input
-        type="text"
-        id="head-branch"
-        name="head-branch"
-        placeholder="Enter head branch (default: feature-branch)"
-        aria-describedby="head-branch-help" />
+            <div class="field">
+              <label>Head Branch</label>
+              <input id="head-branch" placeholder="feature-branch" />
+            </div>
+          </div>
 
-      <button id="generate-event" type="button">
-        Create Pr and Merge if Passed
-      </button>
-      <button id="check-prs" type="button" style="background-color: #6c757d">
-        Check Existing PRs
-      </button>
-    </form>
+          <div class="actions">
+            <button id="generate-event" type="button" class="primary">
+              Create & Merge
+            </button>
+            <button id="check-prs" type="button" class="secondary">
+              Check PRs
+            </button>
+          </div>
+        </form>
+      </main>
 
-    <section id="pr-check-result">
-      <h2>PR Check Result</h2>
-      <div id="result-content"></div>
-    </section>
+      <section id="pr-check-result" class="results">
+        <h2>Results</h2>
+        <div id="result-content"></div>
+      </section>
+    </div>
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const generateButton = document.getElementById("generate-event");
-        const checkPrsButton = document.getElementById("check-prs");
-        const resultContent = document.getElementById("result-content");
-        const form = document.getElementById("input-form");
-
-        // Setup real-time validation
-        setupRealTimeValidation();
-
-        function sanitizeHTML(str) {
-          const div = document.createElement("div");
-          div.textContent = str;
-          return div.innerHTML;
-        }
-
-        function displayResult(data, type = "generate") {
-          resultContent.innerHTML = "";
-
-          if (!data.success) {
-            resultContent.innerHTML = `
-              <div class="result-item error">
-                <h3>❌ Error</h3>
-                <p>${sanitizeHTML(data.message || "An error occurred")}</p>
-                ${data.error ? `<pre>${sanitizeHTML(data.error)}</pre>` : ""}
-              </div>
-            `;
-            return;
-          }
-
-          if (type === "generate") {
-            let html = `
-              <div class="result-item">
-                <h3>📋 PR Details</h3>
-              </div>
-            `;
-
-            if (data.githubPR) {
-              if (data.githubPR.created) {
-                html += `
-                  <div class="result-item success">
-                    <h3>🚀 github PR Created</h3>
-                    <p><strong>Repository:</strong> ${sanitizeHTML(data.githubPR.repo)}</p>
-                    <p><strong>PR Number:</strong> ${sanitizeHTML(data.githubPR.prNumber)}</p>
-                    <p><strong>URL:</strong> <a href="${sanitizeHTML(data.githubPR.url)}" target="_blank">${sanitizeHTML(data.githubPR.url)}</a></p>
-                    ${data.githubPR.merged ? "<p><strong>✅ PR Merged Successfully</strong></p>" : ""}
-                  </div>
-                `;
-              }
-              if (data.githubPR.errors) {
-                html += `
-                  <div class="result-item warning">
-                    <h3>⚠️ Github Errors</h3>
-                    <ul>
-                      ${data.githubPR.errors.map((error) => `<li>${sanitizeHTML(error)}</li>`).join("")}
-                    </ul>
-                  </div>
-                `;
-              }
-              if (data.githubPR.results) {
-                html += `
-                  <div class="result-item warning">
-                    <h3>⚠️ Github Results</h3>
-                    <ul>
-                      ${data.githubPR.results.map((result) => `<li>${sanitizeHTML(result.repo)}: ${sanitizeHTML(result.error || (result.merged ? "Merged" : "Not Merged"))}<br>${sanitizeHTML(result?.url)}</li>`).join("")}
-                    </ul>
-                  </div>
-                `;
-              }
-            }
-
-            resultContent.innerHTML = html;
-          } else if (type === "check") {
-            if (data.pullRequests.length === 0) {
-              resultContent.innerHTML = `
-                <div class="result-item warning">
-                  <h3>No Open PRs Found</h3>
-                  <p>No open pull requests found in repository: ${sanitizeHTML(data.repository)}</p>
-                </div>
-              `;
-            } else {
-              let html = `
-                <div class="result-item">
-                  <h3>📂 Repository: ${sanitizeHTML(data.repository)}</h3>
-                  <p>Found ${sanitizeHTML(data.pullRequests.length)} open PR(s)</p>
-                </div>
-              `;
-
-              data.pullRequests.forEach((pr) => {
-                html += `
-                  <div class="result-item">
-                    <h4>PR #${sanitizeHTML(pr.number)}: ${sanitizeHTML(pr.title)}</h4>
-                    <p><strong>Created by:</strong> ${sanitizeHTML(pr.user)}</p>
-                    <p><strong>Created at:</strong> ${sanitizeHTML(new Date(pr.createdAt).toLocaleString())}</p>
-                    <p><strong>URL:</strong> <a href="${sanitizeHTML(pr.url)}" target="_blank">${sanitizeHTML(pr.url)}</a></p>
-                  </div>
-                `;
-              });
-
-              resultContent.innerHTML = html;
-            }
-          }
-        }
-
-        function validateForm() {
-          let isValid = true;
-          const requiredFields = [
-            { id: "github-token", name: "github Token" },
-            { id: "repositories", name: "Repositories" },
-          ];
-
-          // Reset borders
-          requiredFields.forEach((fieldInfo) => {
-            const field = document.getElementById(fieldInfo.id);
-            field.style.borderColor = "#ddd";
-          });
-
-          // Validate required fields
-          requiredFields.forEach((fieldInfo) => {
-            const field = document.getElementById(fieldInfo.id);
-            if (!field.value.trim()) {
-              field.style.borderColor = "#dc3545";
-              isValid = false;
-            }
-          });
-
-          return isValid;
-        }
-
-        // Add real-time validation feedback
-        function setupRealTimeValidation() {
-          const requiredFields = ["github-token", "repositories"];
-
-          requiredFields.forEach((fieldId) => {
-            const field = document.getElementById(fieldId);
-
-            field.addEventListener("blur", function () {
-              validateField(fieldId);
-            });
-
-            field.addEventListener("input", function () {
-              // Clear error styling on input
-              if (this.style.borderColor === "rgb(220, 53, 69)") {
-                this.style.borderColor = "#ddd";
-              }
-            });
-          });
-        }
-
-        function validateField(fieldId) {
-          const field = document.getElementById(fieldId);
-          const value = field.value.trim();
-
-          switch (fieldId) {
-            case "github-token":
-            case "repositories":
-              if (!value) {
-                field.style.borderColor = "#dc3545";
-                return false;
-              } else {
-                field.style.borderColor = "#28a745";
-                return true;
-              }
-            case "coverage-threshold":
-              const numValue = parseInt(value);
-              if (isNaN(numValue) || numValue < 0 || numValue > 100) {
-                field.style.borderColor = "#dc3545";
-                return false;
-              } else {
-                field.style.borderColor = "#28a745";
-                return true;
-              }
-            default:
-              return true;
-          }
-        }
-
-        generateButton.addEventListener("click", async function (e) {
-          if (!validateForm()) {
-            resultContent.innerHTML = `
-              <div class="result-item error">
-                <h3>❌ Validation Error</h3>
-                <p>Please fill in all required fields correctly.</p>
-              </div>
-            `;
-            return;
-          }
-
-          generateButton.classList.add("btn-loading");
-          generateButton.disabled = true;
-
-          const prTitle =
-            document.getElementById("pr-title").value || "Automated PR";
-          const prDescription =
-            document.getElementById("pr-description").value ||
-            "Created by PR Management System";
-          const githubToken = document.getElementById("github-token").value;
-          const repositories = document.getElementById("repositories").value;
-
-          const baseBranch =
-            document.getElementById("base-branch").value || "main";
-          const headBranch =
-            document.getElementById("head-branch").value || "feature-branch";
-
-          resultContent.innerHTML =
-            '<div class="result-item"><p>⏳ Processing your request...</p></div>';
-
-          try {
-            const response = await fetch("/api/generate-event", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                title: prTitle,
-                description: prDescription,
-                token: githubToken,
-                repositories: repositories,
-                baseBranch: baseBranch,
-                headBranch: headBranch,
-              }),
-            });
-
-            const data = await response.json();
-
-            console.log(data, "Generate Data");
-
-            displayResult(data, "generate");
-          } catch (error) {
-            console.log(error, "Generate Error");
-
-            displayResult({
-              success: false,
-              message: "Failed to connect to server",
-              error: error.message,
-            });
-          } finally {
-            // Remove loading state
-            generateButton.classList.remove("btn-loading");
-            generateButton.disabled = false;
-          }
-        });
-
-        checkPrsButton.addEventListener("click", async function () {
-          if (!validateForm()) {
-            resultContent.innerHTML = `
-              <div class="result-item error">
-                <h3>❌ Validation Error</h3>
-                <p>Please fill in all required fields correctly.</p>
-              </div>
-            `;
-            return;
-          }
-
-          // Show loading state on button
-          checkPrsButton.classList.add("btn-loading");
-          checkPrsButton.disabled = true;
-
-          const githubToken = document.getElementById("github-token").value;
-          const repositories = document.getElementById("repositories").value;
-
-          if (!repositories) {
-            resultContent.innerHTML = `
-              <div class="result-item error">
-                <h3>❌ Input Error</h3>
-                <p>Please enter at least one repository</p>
-              </div>
-            `;
-            // Remove loading state
-            checkPrsButton.classList.remove("btn-loading");
-            checkPrsButton.disabled = false;
-            return;
-          }
-
-          // Get first repository for checking
-          const firstRepo = repositories.split(",")[0].trim();
-
-          // Show loading
-          resultContent.innerHTML =
-            '<div class="result-item"><p>⏳ Fetching PRs...</p></div>';
-
-          try {
-            const response = await fetch("/api/check-pr", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                token: githubToken,
-                repository: firstRepo,
-              }),
-            });
-
-            const data = await response.json();
-            displayResult(data, "check");
-          } catch (error) {
-            displayResult({
-              success: false,
-              message: "Failed to connect to server",
-              error: error.message,
-            });
-          } finally {
-            // Remove loading state
-            checkPrsButton.classList.remove("btn-loading");
-            checkPrsButton.disabled = false;
-          }
-        });
-      });
-    </script>
+    <script src="script.js"></script>
   </body>
 </html>
