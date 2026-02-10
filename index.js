@@ -33,8 +33,8 @@ async function waitForMergeable(
   owner,
   repo,
   pull_number,
-  retries = 10,
-  delay = 1500,
+  retries = 3,
+  delay = 500,
 ) {
   for (let i = 0; i < retries; i++) {
     const { data: pr } = await octokit.rest.pulls.get({
