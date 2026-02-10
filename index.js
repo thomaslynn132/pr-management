@@ -53,6 +53,10 @@ async function waitForMergeable(
   throw new Error("Timed out waiting for github to compute mergeability");
 }
 
+app.get("/", (req, res) => {
+  res.sendFile(join(__dirname, "index.html"));
+});
+
 app.post("/api/generate-event", async (req, res) => {
   let eventFilePath;
 
