@@ -230,12 +230,6 @@
 
           if (type === "generate") {
             let html = `
-              <div class="result-item ${data.lint.passed ? "success" : "error"}">
-                <h3>${data.lint.passed ? "✅" : "❌"} Lint Check</h3>
-                <p>${data.lint.passed ? "Passed" : "Failed"}</p>
-                ${data.lint.error ? `<pre>${sanitizeHTML(data.lint.error)}</pre>` : ""}
-              </div>
-
               <div class="result-item">
                 <h3>📋 PR Details</h3>
                 <p><strong>Title:</strong> ${sanitizeHTML(data.prDetails.title)}</p>
@@ -420,8 +414,13 @@
             });
 
             const data = await response.json();
+
+            console.log(data, "Generate Data");
+
             displayResult(data, "generate");
           } catch (error) {
+            console.log(error, "Generate Error");
+
             displayResult({
               success: false,
               message: "Failed to connect to server",
