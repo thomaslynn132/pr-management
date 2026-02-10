@@ -132,6 +132,7 @@
         id="pr-title"
         name="pr-title"
         placeholder="Enter PR title"
+        value="PR title"
         aria-describedby="pr-title-help" />
 
       <label for="pr-description">PR Description:</label>
@@ -140,14 +141,15 @@
         id="pr-description"
         name="pr-description"
         placeholder="Enter PR description"
+        value="PR description"
         aria-describedby="pr-description-help" />
 
-      <label for="github-token">GitHub Token:</label>
+      <label for="github-token">github Token:</label>
       <input
         type="password"
         id="github-token"
         name="github-token"
-        placeholder="Enter GitHub token"
+        placeholder="Enter github token"
         required
         aria-describedby="github-token-help" />
 
@@ -168,6 +170,7 @@
         type="text"
         id="base-branch"
         name="base-branch"
+        value="main"
         placeholder="Enter base branch (default: main)"
         aria-describedby="base-branch-help" />
 
@@ -176,22 +179,12 @@
         type="text"
         id="head-branch"
         name="head-branch"
+        value="thomas"
         placeholder="Enter head branch (default: feature-branch)"
         aria-describedby="head-branch-help" />
 
-      <label for="coverage-threshold">Coverage Threshold (%):</label>
-      <input
-        type="number"
-        id="coverage-threshold"
-        name="coverage-threshold"
-        min="0"
-        max="100"
-        placeholder="Enter coverage threshold (default: 80)"
-        value="80"
-        aria-describedby="coverage-threshold-help" />
-
       <button id="generate-event" type="button">
-        Generate Event & Create PR
+        Create Pr and Merge if Passed
       </button>
       <button id="check-prs" type="button" style="background-color: #6c757d">
         Check Existing PRs
@@ -241,18 +234,6 @@
                 ${data.lint.error ? `<pre>${sanitizeHTML(data.lint.error)}</pre>` : ""}
               </div>
 
-              <div class="result-item ${data.test.passed ? "success" : "error"}">
-                <h3>${data.test.passed ? "✅" : "❌"} Test Check</h3>
-                <p>${data.test.passed ? "Passed" : "Failed"}</p>
-                ${data.test.error ? `<pre>${sanitizeHTML(data.test.error)}</pre>` : ""}
-              </div>
-
-              <div class="result-item ${data.coverage.passed ? "success" : data.coverage.percentage === 0 ? "warning" : "error"}">
-                <h3>📊 Coverage Check</h3>
-                <p>Coverage: ${sanitizeHTML(data.coverage.percentage)}% (Threshold: ${sanitizeHTML(data.coverage.threshold)}%)</p>
-                <p>${data.coverage.passed ? "✅ Passed" : data.coverage.percentage === 0 ? "⚠️ No coverage data" : "❌ Failed"}</p>
-              </div>
-
               <div class="result-item">
                 <h3>📋 PR Details</h3>
                 <p><strong>Title:</strong> ${sanitizeHTML(data.prDetails.title)}</p>
@@ -264,7 +245,7 @@
               if (data.githubPR.created) {
                 html += `
                   <div class="result-item success">
-                    <h3>🚀 GitHub PR Created</h3>
+                    <h3>🚀 github PR Created</h3>
                     <p><strong>Repository:</strong> ${sanitizeHTML(data.githubPR.repo)}</p>
                     <p><strong>PR Number:</strong> ${sanitizeHTML(data.githubPR.prNumber)}</p>
                     <p><strong>URL:</strong> <a href="${sanitizeHTML(data.githubPR.url)}" target="_blank">${sanitizeHTML(data.githubPR.url)}</a></p>
@@ -275,7 +256,7 @@
               if (data.githubPR.errors) {
                 html += `
                   <div class="result-item warning">
-                    <h3>⚠️ GitHub Errors</h3>
+                    <h3>⚠️ github Errors</h3>
                     <ul>
                       ${data.githubPR.errors.map((error) => `<li>${sanitizeHTML(error)}</li>`).join("")}
                     </ul>
@@ -320,7 +301,7 @@
         function validateForm() {
           let isValid = true;
           const requiredFields = [
-            { id: "github-token", name: "GitHub Token" },
+            { id: "github-token", name: "github Token" },
             { id: "repositories", name: "Repositories" },
           ];
 
@@ -339,30 +320,12 @@
             }
           });
 
-          // Validate coverage threshold
-          const coverageField = document.getElementById("coverage-threshold");
-          const coverageValue = parseInt(coverageField.value);
-          if (
-            isNaN(coverageValue) ||
-            coverageValue < 0 ||
-            coverageValue > 100
-          ) {
-            coverageField.style.borderColor = "#dc3545";
-            isValid = false;
-          } else {
-            coverageField.style.borderColor = "#ddd";
-          }
-
           return isValid;
         }
 
         // Add real-time validation feedback
         function setupRealTimeValidation() {
-          const requiredFields = [
-            "github-token",
-            "repositories",
-            "coverage-threshold",
-          ];
+          const requiredFields = ["github-token", "repositories"];
 
           requiredFields.forEach((fieldId) => {
             const field = document.getElementById(fieldId);
@@ -419,7 +382,6 @@
             return;
           }
 
-          // Show loading state on button
           generateButton.classList.add("btn-loading");
           generateButton.disabled = true;
 
@@ -435,10 +397,7 @@
             document.getElementById("base-branch").value || "main";
           const headBranch =
             document.getElementById("head-branch").value || "feature-branch";
-          const coverageThreshold =
-            document.getElementById("coverage-threshold").value || "80";
 
-          // Show loading
           resultContent.innerHTML =
             '<div class="result-item"><p>⏳ Processing your request...</p></div>';
 
@@ -455,7 +414,6 @@
                 repositories: repositories,
                 baseBranch: baseBranch,
                 headBranch: headBranch,
-                coverageThreshold: coverageThreshold,
               }),
             });
 
