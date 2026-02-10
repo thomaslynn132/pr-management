@@ -121,8 +121,12 @@
   <body>
     <h1>PR Management</h1>
     <p>
-      Welcome to the PR Management. Here you can manage(create, merge, check existing) your pull
-      requests efficiently.
+      Welcome to the PR Management. Here you can manage(create, merge, check
+      existing) your pull requests efficiently. Please fill in the required
+      fields and click the buttons to perform actions. Data won't be stored
+      anywhere and will be used only for creating PRs and checking existing PRs.
+      Make sure to provide a valid GitHub token with appropriate permissions for
+      the repositories you want to manage.
     </p>
 
     <form id="input-form" novalidate>
@@ -132,7 +136,6 @@
         id="pr-title"
         name="pr-title"
         placeholder="Enter PR title"
-        value="PR title"
         aria-describedby="pr-title-help" />
 
       <label for="pr-description">PR Description:</label>
@@ -141,14 +144,12 @@
         id="pr-description"
         name="pr-description"
         placeholder="Enter PR description"
-        value="PR description"
         aria-describedby="pr-description-help" />
 
       <label for="github-token">github Token:</label>
       <input
         type="password"
         id="github-token"
-        value=""
         name="github-token"
         placeholder="Enter github token"
         required
@@ -159,7 +160,6 @@
         type="text"
         id="repositories"
         name="repositories"
-        value="thomaslynn132/pr-management"
         placeholder="Enter repositories (owner/repo)"
         required
         aria-describedby="repositories-help" />
@@ -172,7 +172,6 @@
         type="text"
         id="base-branch"
         name="base-branch"
-        value="main"
         placeholder="Enter base branch (default: main)"
         aria-describedby="base-branch-help" />
 
@@ -181,7 +180,6 @@
         type="text"
         id="head-branch"
         name="head-branch"
-        value="thomas"
         placeholder="Enter head branch (default: feature-branch)"
         aria-describedby="head-branch-help" />
 

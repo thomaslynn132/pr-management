@@ -57,14 +57,8 @@ app.post("/api/generate-event", async (req, res) => {
   let eventFilePath;
 
   try {
-    const {
-      title,
-      description,
-      token,
-      repositories,
-      baseBranch = "main",
-      headBranch = "thomas",
-    } = req.body;
+    const { title, description, token, repositories, baseBranch, headBranch } =
+      req.body;
 
     if (!token || !repositories) {
       return res.status(400).json({
