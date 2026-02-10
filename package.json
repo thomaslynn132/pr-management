@@ -5,12 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "lint": "eslint . --ext .js,.mjs,.cjs",
-    "test": "jest --runInBand",
     "start": "node index.js",
-    "test:coverage": "jest --coverage --coverageReporters=json-summary",
-    "generate-event": "node ./scripts/generate-event.js",
-    "pr-check": "npm run generate-event && node ./scripts/pr-check.js",
     "dev": "nodemon index.js --ignore coverage/ --ignore temp_event.json --ignore .eslintcache --ignore node_modules/"
   },
   "keywords": [
