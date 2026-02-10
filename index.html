@@ -232,8 +232,6 @@
             let html = `
               <div class="result-item">
                 <h3>📋 PR Details</h3>
-                <p><strong>Title:</strong> ${sanitizeHTML(data.prDetails.title)}</p>
-                <p><strong>Branch:</strong> ${sanitizeHTML(data.prDetails.head.ref)} → ${sanitizeHTML(data.prDetails.base.ref)}</p>
               </div>
             `;
 
@@ -255,6 +253,16 @@
                     <h3>⚠️ github Errors</h3>
                     <ul>
                       ${data.githubPR.errors.map((error) => `<li>${sanitizeHTML(error)}</li>`).join("")}
+                    </ul>
+                  </div>
+                `;
+              }
+              if (data.githubPR.results) {
+                html += `
+                  <div class="result-item warning">
+                    <h3>⚠️ github results</h3>
+                    <ul>
+                      ${data.githubPR.results.map((result) => `<li>${sanitizeHTML(result.repo)}: ${sanitizeHTML(result.error || (result.merged ? "Merged" : "Not Merged"))}</li>`).join("")}
                     </ul>
                   </div>
                 `;
