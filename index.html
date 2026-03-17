@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PR Management</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.ico" />
+
     <style>
       :root {
         --bg: #0f172a;
@@ -215,7 +217,10 @@
         <p>
           Create, merge, and inspect GitHub pull requests safely.
           <br />
-          <span>No data is stored.</span>
+          <span id="login-status" style="color: var(--warning);">Not logged in</span>
+          <button id="login-btn" type="button" class="secondary" style="margin-left: 10px; padding: 6px 12px; font-size: 0.8rem;">
+            Login with GitHub
+          </button>
         </p>
       </header>
 
@@ -229,11 +234,6 @@
           <div class="field">
             <label>PR Description</label>
             <input id="pr-description" placeholder="Created by PR Management" />
-          </div>
-
-          <div class="field">
-            <label>GitHub Token *</label>
-            <input id="github-token" type="password" required />
           </div>
 
           <div class="field">
@@ -257,6 +257,21 @@
             </div>
           </div>
 
+          <div class="field">
+            <label>Reviewers (optional)</label>
+            <input id="reviewers" placeholder="username1, username2, @org/team" />
+            <small>Comma-separated usernames or teams (org/team)</small>
+          </div>
+
+          <div class="field">
+            <label>Merge Method</label>
+            <select id="merge-method" style="width:100%;padding:12px 14px;background:#020617;border:1px solid #1e293b;border-radius:10px;color:var(--text);">
+              <option value="merge">Merge (default)</option>
+              <option value="squash">Squash</option>
+              <option value="rebase">Rebase</option>
+            </select>
+          </div>
+
           <div class="actions">
             <button id="generate-event" type="button" class="primary">
               Create & Merge
@@ -264,6 +279,17 @@
             <button id="check-prs" type="button" class="secondary">
               Check PRs
             </button>
+            <button id="list-branches" type="button" class="secondary">
+              List Branches
+            </button>
+            <button id="pr-status" type="button" class="secondary">
+              PR Status
+            </button>
+          </div>
+
+          <div class="field" style="margin-top:16px">
+            <label>PR Number (for status check)</label>
+            <input id="pr-number" type="number" placeholder="e.g. 123" />
           </div>
         </form>
       </main>
@@ -333,9 +359,126 @@
 
         const generateButton = document.getElementById("generate-event");
         const checkPrsButton = document.getElementById("check-prs");
+        const listBranchesButton = document.getElementById("list-branches");
+        const prStatusButton = document.getElementById("pr-status");
         const resultContent = document.getElementById("result-content");
+        const loginBtn = document.getElementById("login-btn");
+        const loginStatus = document.getElementById("login-status");
 
-        setupRealTimeValidation();
+        const ENC_KEY_NAME = "github_enc_key";
+
+        async function getOrCreateKey() {
+          let keyData = localStorage.getItem(ENC_KEY_NAME);
+          if (keyData) {
+            return await crypto.subtle.importKey(
+              "jwk",
+              JSON.parse(keyData),
+              { name: "AES-GCM" },
+              true,
+              ["encrypt", "decrypt"]
+            );
+          }
+          const key = await crypto.subtle.generateKey(
+            { name: "AES-GCM", length: 256 },
+            true,
+            ["encrypt", "decrypt"]
+          );
+          const exported = await crypto.subtle.exportKey("jwk", key);
+          localStorage.setItem(ENC_KEY_NAME, JSON.stringify(exported));
+          return key;
+        }
+
+        async function encryptToken(token) {
+          const key = await getOrCreateKey();
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const encoded = new TextEncoder().encode(token);
+          const encrypted = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv },
+            key,
+            encoded
+          );
+          return JSON.stringify({
+            iv: Array.from(iv),
+            data: Array.from(new Uint8Array(encrypted))
+          });
+        }
+
+        async function decryptToken(encrypted) {
+          try {
+            const key = await getOrCreateKey();
+            const { iv, data } = JSON.parse(encrypted);
+            const decrypted = await crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: new Uint8Array(iv) },
+              key,
+              new Uint8Array(data)
+            );
+            return new TextDecoder().decode(decrypted);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        const TOKEN_KEY = "github_auth";
+        let cachedToken = null;
+
+        async function getToken() {
+          if (cachedToken) return cachedToken;
+          const encrypted = localStorage.getItem(TOKEN_KEY);
+          if (!encrypted) return null;
+          cachedToken = await decryptToken(encrypted);
+          return cachedToken;
+        }
+
+        async function isLoggedIn() {
+          return !!(await getToken());
+        }
+
+        async function updateLoginStatus() {
+          const loggedIn = await isLoggedIn();
+          if (loggedIn) {
+            loginStatus.textContent = "✅ Logged in";
+            loginStatus.style.color = "var(--success)";
+            loginBtn.textContent = "Logout";
+          } else {
+            loginStatus.textContent = "Not logged in";
+            loginStatus.style.color = "var(--warning)";
+            loginBtn.textContent = "Login with GitHub";
+          }
+        }
+
+        (async () => await updateLoginStatus())();
+
+        loginBtn.addEventListener("click", async () => {
+          if (await isLoggedIn()) {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(ENC_KEY_NAME);
+            cachedToken = null;
+            await updateLoginStatus();
+          } else {
+            window.open("/oauth/login", "_blank", "width=600,height=700");
+          }
+        });
+
+        window.addEventListener("storage", (e) => {
+          if (e.key === "github_token") {
+            updateLoginStatus();
+          }
+        });
+
+        setInterval(async () => {
+          try {
+            await updateLoginStatus();
+          } catch {}
+        }, 1000);
+
+        window.addEventListener("message", async (event) => {
+          if (event.data?.type === "github_token") {
+            const encrypted = await encryptToken(event.data.token);
+            localStorage.setItem(TOKEN_KEY, encrypted);
+            cachedToken = event.data.token;
+            await updateLoginStatus();
+          }
+        });
 
         function sanitizeHTML(str) {
           const div = document.createElement("div");
@@ -343,26 +486,14 @@
           return div.innerHTML;
         }
 
-        function validateForm() {
-          let valid = true;
-          ["github-token", "repositories"].forEach((id) => {
-            const field = document.getElementById(id);
-            field.style.borderColor = "#ddd";
-            if (!field.value.trim()) {
-              field.style.borderColor = "#dc3545";
-              valid = false;
-            }
-          });
-          return valid;
-        }
-
-        function setupRealTimeValidation() {
-          ["github-token", "repositories"].forEach((id) => {
-            const field = document.getElementById(id);
-            field.addEventListener("input", () => {
-              field.style.borderColor = "#ddd";
-            });
-          });
+        function validateRepo() {
+          const field = document.getElementById("repositories");
+          field.style.borderColor = "#ddd";
+          if (!field.value.trim()) {
+            field.style.borderColor = "#dc3545";
+            return false;
+          }
+          return true;
         }
 
         function displayError(message, error) {
@@ -376,8 +507,12 @@
         }
 
         generateButton.addEventListener("click", async () => {
-          if (!validateForm()) {
-            displayError("Please fill in all required fields.");
+          if (!await isLoggedIn()) {
+            displayError("Please login with GitHub first.");
+            return;
+          }
+          if (!validateRepo()) {
+            displayError("Please fill in repository field.");
             return;
           }
 
@@ -389,18 +524,20 @@
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                token: await getToken(),
                 title:
                   document.getElementById("pr-title").value || "Automated PR",
                 description:
                   document.getElementById("pr-description").value ||
                   "Created by PR Management System",
-                token: document.getElementById("github-token").value,
                 repositories: document.getElementById("repositories").value,
                 baseBranch:
                   document.getElementById("base-branch").value || "main",
                 headBranch:
                   document.getElementById("head-branch").value ||
                   "feature-branch",
+                reviewers: document.getElementById("reviewers").value,
+                mergeMethod: document.getElementById("merge-method").value,
               }),
             });
 
@@ -415,8 +552,12 @@
         });
 
         checkPrsButton.addEventListener("click", async () => {
-          if (!validateForm()) {
-            displayError("Please fill in all required fields.");
+          if (!await isLoggedIn()) {
+            displayError("Please login with GitHub first.");
+            return;
+          }
+          if (!validateRepo()) {
+            displayError("Please fill in repository field.");
             return;
           }
 
@@ -432,14 +573,11 @@
             const response = await fetch("/api/check-pr", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                token: document.getElementById("github-token").value,
-                repository: repo,
-              }),
+              body: JSON.stringify({ token: getToken(), repository: repo }),
             });
 
             const data = await response.json();
-            renderGenerateResult(data);
+            renderPRListResult(data);
           } catch (err) {
             displayError("Failed to connect to server", err.message);
           } finally {
@@ -447,6 +585,179 @@
             checkPrsButton.disabled = false;
           }
         });
+
+        listBranchesButton.addEventListener("click", async () => {
+          if (!await isLoggedIn()) {
+            displayError("Please login with GitHub first.");
+            return;
+          }
+          if (!validateRepo()) {
+            displayError("Please fill in repository field.");
+            return;
+          }
+
+          listBranchesButton.classList.add("btn-loading");
+          listBranchesButton.disabled = true;
+
+          try {
+            const repo = document
+              .getElementById("repositories")
+              .value.split(",")[0]
+              .trim();
+
+            const response = await fetch("/api/branches", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: getToken(), repository: repo }),
+            });
+
+            const data = await response.json();
+            renderBranchesResult(data);
+          } catch (err) {
+            displayError("Failed to connect to server", err.message);
+          } finally {
+            listBranchesButton.classList.remove("btn-loading");
+            listBranchesButton.disabled = false;
+          }
+        });
+
+        prStatusButton.addEventListener("click", async () => {
+          if (!await isLoggedIn()) {
+            displayError("Please login with GitHub first.");
+            return;
+          }
+          if (!validateRepo()) {
+            displayError("Please fill in repository field.");
+            return;
+          }
+
+          const prNum = document.getElementById("pr-number").value;
+          if (!prNum) {
+            displayError("Please enter a PR number.");
+            return;
+          }
+
+          prStatusButton.classList.add("btn-loading");
+          prStatusButton.disabled = true;
+
+          try {
+            const repo = document
+              .getElementById("repositories")
+              .value.split(",")[0]
+              .trim();
+
+            const response = await fetch("/api/pr-status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: getToken(), repository: repo, pullNumber: prNum }),
+            });
+
+            const data = await response.json();
+            renderPRStatusResult(data);
+          } catch (err) {
+            displayError("Failed to connect to server", err.message);
+          } finally {
+            prStatusButton.classList.remove("btn-loading");
+            prStatusButton.disabled = false;
+          }
+        });
+
+        function renderPRListResult(data) {
+          if (!data.success) {
+            return setResult(`
+      <div class="result-item error">
+        <h3>❌ Error</h3>
+        <p>${sanitizeHTML(data.message || "Something went wrong")}</p>
+      </div>
+    `);
+          }
+
+          const prs = data.pullRequests || [];
+          if (!prs.length) {
+            return setResult(`
+      <div class="result-item warning">
+        <p>No open PRs found.</p>
+      </div>
+    `);
+          }
+
+          let html = `<h3>Open PRs in ${sanitizeHTML(data.repository)}</h3>`;
+          prs.forEach(pr => {
+            html += `
+        <div class="result-item">
+          <h4>#${pr.number}: ${sanitizeHTML(pr.title)}</h4>
+          <p>By ${sanitizeHTML(pr.user)} • ${new Date(pr.createdAt).toLocaleDateString()}</p>
+          <a href="${sanitizeHTML(pr.url)}" target="_blank">View PR →</a>
+        </div>
+      `;
+          });
+          setResult(html);
+        }
+
+        function renderBranchesResult(data) {
+          if (!data.success) {
+            return setResult(`
+      <div class="result-item error">
+        <h3>❌ Error</h3>
+        <p>${sanitizeHTML(data.message || "Something went wrong")}</p>
+      </div>
+    `);
+          }
+
+          const branches = data.branches || [];
+          let html = `<h3>Branches in ${sanitizeHTML(data.repository)}</h3>
+      <p>Default: ${sanitizeHTML(data.defaultBranch)}</p>`;
+          
+          branches.forEach(branch => {
+            html += `
+        <div class="result-item">
+          <h4>${branch.protected ? "🛡️ " : ""}${sanitizeHTML(branch.name)}</h4>
+          <small>${branch.sha.substring(0, 7)}</small>
+        </div>
+      `;
+          });
+          setResult(html);
+        }
+
+        function renderPRStatusResult(data) {
+          if (!data.success) {
+            return setResult(`
+      <div class="result-item error">
+        <h3>❌ Error</h3>
+        <p>${sanitizeHTML(data.message || "Something went wrong")}</p>
+      </div>
+    `);
+          }
+
+          const pr = data.pullRequest;
+          const checks = data.checks;
+          
+          let html = `
+      <div class="result-item">
+        <h3>#${pr.number}: ${sanitizeHTML(pr.title)}</h3>
+        <p>State: ${pr.state} • Merged: ${pr.merged ? "Yes" : "No"}</p>
+        <p>Mergeable: ${pr.mergeable === true ? "Yes" : "No"} (${pr.mergeableState})</p>
+        <a href="${sanitizeHTML(pr.url)}" target="_blank">View PR →</a>
+      </div>
+    `;
+
+          if (checks) {
+            html += `
+      <div class="result-item">
+        <h4>Check Runs (${checks.total})</h4>
+        <p>Passed: ${checks.passed} • Failed: ${checks.failed} • Pending: ${checks.pending}</p>
+        ${checks.runs.map(run => `
+          <div style="margin-left:12px;padding:4px 0;">
+            <span style="color:${run.conclusion === "success" ? "var(--success)" : run.conclusion === "failure" ? "var(--error)" : "var(--warning)"}">●</span>
+            ${sanitizeHTML(run.name)} - ${run.status}
+          </div>
+        `).join("")}
+      </div>
+    `;
+          }
+
+          setResult(html);
+        }
       });
     </script>
   </body>
