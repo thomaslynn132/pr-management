@@ -5,12 +5,52 @@ import { existsSync, writeFileSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { Octokit } from "@octokit/rest";
 import { fileURLToPath } from "url";
+import pg from "pg";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || "";
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || "";
 const REDIRECT_URI = process.env.REDIRECT_URI || "http://localhost:3000/oauth/callback";
+const DB_URI = process.env.DB_URI || "";
+
+const pool = new pg.Pool({ connectionString: DB_URI, ssl: { rejectUnauthorized: false } });
+
+async function initDb() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS history (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255),
+        action VARCHAR(50),
+        repo VARCHAR(255),
+        pr_number INTEGER,
+        title VARCHAR(500),
+        status VARCHAR(50),
+        details JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_history_username ON history(username);
+    `);
+    console.log("Database initialized");
+  } catch (err) {
+    console.error("DB init error:", err);
+  }
+}
+initDb();
+
+async function getUserInfo(token) {
+  const octokit = new Octokit({ auth: token });
+  const { data: user } = await octokit.rest.users.getAuthenticated();
+  return { githubId: String(user.id), username: user.login };
+}
+
+async function saveHistory(userId, action, repo, prNumber, title, status, details = {}) {
+  await pool.query(
+    "INSERT INTO history (user_id, action, repo, pr_number, title, status, details) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    [userId, action, repo, prNumber, title, status, JSON.stringify(details)]
+  );
+}
 
 function getOctokit(token) {
   if (!token) {
@@ -31,7 +71,7 @@ app.use(
   }),
 );
 app.use(json({ limit: "10mb" }));
-app.use(expressStatic(join(__dirname, ".")));
+app.use(expressStatic(join(__dirname, "../frontend")));
 function sanitizeInput(input) {
   if (typeof input !== "string") return "";
   return input;
@@ -63,7 +103,11 @@ async function waitForMergeable(
 }
 
 app.get("/", (req, res) => {
-  res.sendFile(join(__dirname, "index.html"));
+  res.sendFile(join(__dirname, "../frontend/index.html"));
+});
+
+app.get("/profile", (req, res) => {
+  res.sendFile(join(__dirname, "../frontend/profile.html"));
 });
 
 app.post("/api/generate-event", async (req, res) => {
@@ -85,6 +129,7 @@ app.post("/api/generate-event", async (req, res) => {
       return res.status(401).json({ success: false, message: "Please login with GitHub first" });
     }
     const octokit = getOctokit(token);
+    const user = await getUserInfo(token);
 
     const sanitizedTitle = sanitizeInput(title || "Automated PR");
     const sanitizedDescription = sanitizeInput(
@@ -261,11 +306,14 @@ app.post("/api/generate-event", async (req, res) => {
           merged,
           mergeError,
         });
+        
+        await saveHistory(user.username, merged ? "merged" : (created ? "created" : "updated"), repo, pr.number, sanitizedTitle, merged ? "success" : "pending", { url: pr.html_url, mergeError });
       } catch (err) {
         githubResults.push({
           repo,
           error: err.response?.data?.message || err.message,
         });
+        await saveHistory(user.username, "error", repo, null, sanitizedTitle, "error", { error: err.message });
       }
     }
 
@@ -579,6 +627,31 @@ app.get("/oauth/callback", async (req, res) => {
 app.get("/oauth/status", (req, res) => {
   const hasToken = !!GITHUB_CLIENT_ID && !!GITHUB_CLIENT_SECRET;
   res.json({ configured: hasToken });
+});
+
+app.post("/api/profile", async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Please login with GitHub first" });
+    }
+
+    const user = await getUserInfo(token);
+    
+    const historyResult = await pool.query(
+      "SELECT * FROM history WHERE username = $1 ORDER BY created_at DESC LIMIT 50",
+      [user.username]
+    );
+
+    res.json({
+      success: true,
+      user: { username: user.username },
+      history: historyResult.rows
+    });
+  } catch (error) {
+    console.error("Profile error:", error.message);
+    res.status(500).json({ success: false, message: error.message || "Failed to fetch profile" });
+  }
 });
 
 // Start server

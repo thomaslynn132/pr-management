@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile - PR Management</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.ico" />
+
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #111827;
+        --muted: #94a3b8;
+        --text: #e5e7eb;
+        --primary: #3b82f6;
+        --success: #22c55e;
+        --error: #ef4444;
+        --warning: #f59e0b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        background: radial-gradient(circle at top, #1e293b, var(--bg));
+        color: var(--text);
+      }
+
+      .app {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        animation: fadeIn 0.8s ease;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        font-size: 2.2rem;
+      }
+
+      .header a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      .card {
+        background: linear-gradient(180deg, #111827, #020617);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        animation: slideUp 0.6s ease;
+      }
+
+      .result-item {
+        background: #020617;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        animation: slideUp 0.4s ease;
+        border-left: 4px solid var(--primary);
+      }
+
+      .result-item.success {
+        border-left: 4px solid var(--success);
+      }
+
+      .result-item.error {
+        border-left: 4px solid var(--error);
+      }
+
+      .result-item.warning {
+        border-left: 4px solid var(--warning);
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      button {
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        background: var(--primary);
+        color: white;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-loading {
+        pointer-events: none;
+        opacity: 0.8;
+      }
+
+      .btn-loading::after {
+        content: "";
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-left: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes slideUp {
+        from { transform: translateY(12px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <h1>👤 Profile</h1>
+        <p><a href="/">← Back to PR Management</a></p>
+      </header>
+
+      <main class="card">
+        <div class="actions">
+          <button id="load-profile">Load Profile</button>
+        </div>
+        <div id="profile-content"></div>
+      </main>
+    </div>
+
+    <script>
+      const TOKEN_KEY = "github_auth";
+      const ENC_KEY_NAME = "github_enc_key";
+      let cachedToken = null;
+
+      async function getOrCreateKey() {
+        let keyData = localStorage.getItem(ENC_KEY_NAME);
+        if (keyData) {
+          return await crypto.subtle.importKey(
+            "jwk",
+            JSON.parse(keyData),
+            { name: "AES-GCM" },
+            true,
+            ["encrypt", "decrypt"]
+          );
+        }
+        const key = await crypto.subtle.generateKey(
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"]
+        );
+        const exported = await crypto.subtle.exportKey("jwk", key);
+        localStorage.setItem(ENC_KEY_NAME, JSON.stringify(exported));
+        return key;
+      }
+
+      async function decryptToken(encrypted) {
+        try {
+          const key = await getOrCreateKey();
+          const { iv, data } = JSON.parse(encrypted);
+          const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: new Uint8Array(iv) },
+            key,
+            new Uint8Array(data)
+          );
+          return new TextDecoder().decode(decrypted);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function getToken() {
+        if (cachedToken) return cachedToken;
+        const encrypted = localStorage.getItem(TOKEN_KEY);
+        if (!encrypted) return null;
+        cachedToken = await decryptToken(encrypted);
+        return cachedToken;
+      }
+
+      function sanitizeHTML(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function setResult(html) {
+        document.getElementById("profile-content").innerHTML = html;
+      }
+
+      document.getElementById("load-profile").addEventListener("click", async () => {
+        const token = await getToken();
+        if (!token) {
+          setResult('<div class="result-item error"><h3>Please login first</h3><p>Go to <a href="/">main page</a> to login</p></div>');
+          return;
+        }
+
+        const btn = document.getElementById("load-profile");
+        btn.classList.add("btn-loading");
+        btn.disabled = true;
+
+        try {
+          const response = await fetch("/api/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+
+          const data = await response.json();
+          
+          if (!data.success) {
+            setResult(`<div class="result-item error"><h3>❌ Error</h3><p>${sanitizeHTML(data.message)}</p></div>`);
+            return;
+          }
+
+          const user = data.user;
+          const history = data.history || [];
+
+          let html = `
+            <div class="result-item success">
+              <h3>👤 ${sanitizeHTML(user.username)}</h3>
+            </div>
+            <h3>History</h3>
+          `;
+
+          if (!history.length) {
+            html += '<div class="result-item warning"><p>No history yet.</p></div>';
+          } else {
+            history.forEach(item => {
+              const statusColor = item.status === "success" ? "var(--success)" : item.status === "error" ? "var(--error)" : "var(--warning)";
+              html += `
+                <div class="result-item" style="border-left-color:${statusColor}">
+                  <h4>${item.action === "merged" ? "🔀" : item.action === "created" ? "✨" : item.action === "updated" ? "📝" : "❌"} ${sanitizeHTML(item.repo)} #${item.pr_number || "-"}</h4>
+                  <p>${sanitizeHTML(item.title || "")}</p>
+                  <small>${new Date(item.created_at).toLocaleString()}</small>
+                </div>
+              `;
+            });
+          }
+
+          setResult(html);
+        } catch (err) {
+          setResult(`<div class="result-item error"><h3>❌ Error</h3><p>${err.message}</p></div>`);
+        } finally {
+          btn.classList.remove("btn-loading");
+          btn.disabled = false;
+        }
+      });
+
+      (async () => {
+        const token = await getToken();
+        if (!token) {
+          setResult('<div class="result-item warning"><h3>Not logged in</h3><p>Go to <a href="/">main page</a> to login</p></div>');
+        }
+      })();
+    </script>
+  </body>
+</html>

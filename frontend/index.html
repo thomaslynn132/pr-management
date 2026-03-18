@@ -221,6 +221,7 @@
           <button id="login-btn" type="button" class="secondary" style="margin-left: 10px; padding: 6px 12px; font-size: 0.8rem;">
             Login with GitHub
           </button>
+          <a href="/profile" style="margin-left: 10px; color: var(--primary);">Profile</a>
         </p>
       </header>
 
@@ -280,10 +281,13 @@
               Check PRs
             </button>
             <button id="list-branches" type="button" class="secondary">
-              List Branches
+              Branches
             </button>
             <button id="pr-status" type="button" class="secondary">
               PR Status
+            </button>
+            <button id="profile-btn" type="button" class="secondary">
+              Profile
             </button>
           </div>
 
@@ -361,6 +365,7 @@
         const checkPrsButton = document.getElementById("check-prs");
         const listBranchesButton = document.getElementById("list-branches");
         const prStatusButton = document.getElementById("pr-status");
+        const profileBtn = document.getElementById("profile-btn");
         const resultContent = document.getElementById("result-content");
         const loginBtn = document.getElementById("login-btn");
         const loginStatus = document.getElementById("login-status");
@@ -662,6 +667,32 @@
           }
         });
 
+        profileBtn.addEventListener("click", async () => {
+          if (!await isLoggedIn()) {
+            displayError("Please login with GitHub first.");
+            return;
+          }
+
+          profileBtn.classList.add("btn-loading");
+          profileBtn.disabled = true;
+
+          try {
+            const response = await fetch("/api/profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: await getToken() }),
+            });
+
+            const data = await response.json();
+            renderProfileResult(data);
+          } catch (err) {
+            displayError("Failed to connect to server", err.message);
+          } finally {
+            profileBtn.classList.remove("btn-loading");
+            profileBtn.disabled = false;
+          }
+        });
+
         function renderPRListResult(data) {
           if (!data.success) {
             return setResult(`
@@ -754,6 +785,45 @@
         `).join("")}
       </div>
     `;
+          }
+
+          setResult(html);
+        }
+
+        function renderProfileResult(data) {
+          if (!data.success) {
+            return setResult(`
+      <div class="result-item error">
+        <h3>❌ Error</h3>
+        <p>${sanitizeHTML(data.message || "Something went wrong")}</p>
+      </div>
+    `);
+          }
+
+          const user = data.user;
+          const history = data.history || [];
+          
+          let html = `
+      <div class="result-item">
+        <h3>👤 ${sanitizeHTML(user.username)}</h3>
+        <p>Member since: ${new Date(user.created_at).toLocaleDateString()}</p>
+      </div>
+      <h3>History</h3>
+    `;
+
+          if (!history.length) {
+            html += `<div class="result-item warning"><p>No history yet.</p></div>`;
+          } else {
+            history.forEach(item => {
+              const statusColor = item.status === "success" ? "var(--success)" : item.status === "error" ? "var(--error)" : "var(--warning)";
+              html += `
+        <div class="result-item" style="border-left-color:${statusColor}">
+          <h4>${item.action === "merged" ? "🔀" : item.action === "created" ? "✨" : item.action === "updated" ? "📝" : "❌"} ${sanitizeHTML(item.repo)} #${item.pr_number || "-"}</h4>
+          <p>${sanitizeHTML(item.title || "")}</p>
+          <small>${new Date(item.created_at).toLocaleString()}</small>
+        </div>
+      `;
+            });
           }
 
           setResult(html);
